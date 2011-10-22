@@ -259,6 +259,7 @@ public class Pubsub extends Service {
 
 				} catch (IOException e) {
 					Log.e(TAG, "disconnected", e);
+					// TODO, restart the thing if it failed?
 					break;
 				}
 
@@ -288,10 +289,12 @@ public class Pubsub extends Service {
 			try {
 				mInputStream.close();
 				mOutputStream.close();
+				mSocket.close();
 			} catch (IOException e) {
 				e.printStackTrace();
 			}
 
+			
 			if (mHandler != null)
 				mHandler.obtainMessage(TERMINATED).sendToTarget();
 

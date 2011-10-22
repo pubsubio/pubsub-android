@@ -44,3 +44,25 @@ Then, create the Handler. This will act as a message callback between the Serviv
 			}
 		}
 	};
+	
+To start the service, you'll use an intent in the "onResume()" activity method.
+
+	@Override
+	protected void onResume() {
+		// Connect to the service
+		Intent intent = new Intent(this, Pubsub.class);
+		startService(intent);
+		bindService(intent, serviceConnection, Context.BIND_AUTO_CREATE);
+
+		super.onResume();
+	}
+
+And make sure to disconnect from the service in "onPause()" too! Note, this will NOT shut down your connection.
+
+	@Override
+	protected void onPause() {
+		// Disconnect from the service
+		unbindService(serviceConnection);
+
+		super.onPause();
+	}
