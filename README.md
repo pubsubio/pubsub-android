@@ -66,3 +66,7 @@ And make sure to disconnect from the service in "onPause()" too! Note, this will
 
 		super.onPause();
 	}
+	
+Also, you must make sure NOT to forget your AndroidManifest, it's imperative that you make the following two changes!
+* Add a <service> tag that points to the Pubsub service, otherwise you can't connect to it.
+* Add a <uses-permission> tag with the INTERNET rule.
