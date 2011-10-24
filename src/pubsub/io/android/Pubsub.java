@@ -5,6 +5,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.Socket;
 import java.net.UnknownHostException;
+import java.util.ArrayList;
 import java.util.HashMap;
 
 import org.json.JSONException;
@@ -20,7 +21,7 @@ import android.util.Log;
 
 /**
  * 
- * @author Andreas Göransson
+ * @author Andreas Gï¿½ransson
  * 
  */
 public class Pubsub extends Service {
@@ -37,8 +38,13 @@ public class Pubsub extends Service {
 
 	// Registered callbacks
 	// filter : callback (unique id for your message: in activity or resources)
-	private HashMap<String, Integer> filters = new HashMap<String, Integer>();
-	// private HashMap<String, String> subs = new HashMap<String, String>();
+	// TODO WHY?! This is stored by the hub anyway.. no need to store it here
+	// for christs sake!!! You Bastard!
+	// private HashMap<Integer, String> filters_callbacks = new HashMap<Integer,
+	// String>();
+
+	// What subs are we subscribed to?
+	//private ArrayList<String> subs = new ArrayList<String>();
 
 	// The binder
 	private LocalBinder mBinder = new LocalBinder();
@@ -111,8 +117,8 @@ public class Pubsub extends Service {
 	}
 
 	/**
-	 * Connect to hub. We need borth arguments as the same type to easily forward
-	 * it to the Task.
+	 * Connect to hub. We need borth arguments as the same type to easily
+	 * forward it to the Task.
 	 * 
 	 * @param url
 	 * @param port
@@ -138,7 +144,8 @@ public class Pubsub extends Service {
 				mPubsubComm = new PubsubComm(socket);
 				mPubsubComm.execute();
 			} else {
-				// If we failed to init the socket, just terminate the app? Might cause
+				// If we failed to init the socket, just terminate the app?
+				// Might cause
 				// null pointers if the handler isn't set though... meh!
 				mHandler.obtainMessage(TERMINATED).sendToTarget();
 			}
@@ -146,6 +153,16 @@ public class Pubsub extends Service {
 			if (DEBUG)
 				Log.i(TAG, "Pubsub.io already connected, ignoring");
 		}
+	}
+
+	/**
+	 * Detects if we're subscribed to a sub.
+	 * 
+	 * @return
+	 */
+	public boolean isSubscribed() {
+		//return (subs.size() > 0);
+		return true;
 	}
 
 	/**
@@ -166,6 +183,52 @@ public class Pubsub extends Service {
 		}
 	}
 
+	/**
+	 * Subscribe to a filter on the connected sub.
+	 * 
+	 * @param json_filter
+	 * @param handler_callback
+	 */
+	public void subscribe(JSONObject json_filter, int handler_callback) {
+		if (mPubsubComm != null) {
+			try {
+				// Send the message to the hub
+				write(PubsubParser.subscribe(json_filter, handler_callback));
+				// Add the handler callback
+				// filters_callbacks.put(handler_callback,
+				// json_filter.toString());
+			} catch (JSONException e) {
+				if (mHandler != null)
+					mHandler.obtainMessage(ERROR, -1, -1,
+							"Failed to construct subscribe-message")
+							.sendToTarget();
+				Log.e(TAG, e.getMessage(), e);
+			}
+		}
+	}
+
+	/**
+	 * Unsubscribe from the specified filter.
+	 * 
+	 * @param handler_callback
+	 */
+	public void unsubscribe(Integer handler_callback) {
+		if (mPubsubComm != null) {
+			try {
+				// Send the message to the hub
+				write(PubsubParser.unsubscribe(handler_callback));
+				// Add the handler callback
+				// filters_callbacks.remove(handler_callback);
+			} catch (JSONException e) {
+				if (mHandler != null)
+					mHandler.obtainMessage(ERROR, -1, -1,
+							"Failed to construct subscribe-message")
+							.sendToTarget();
+				Log.e(TAG, e.getMessage(), e);
+			}
+		}
+	}
+
 	public void publish(JSONObject doc) {
 		if (mPubsubComm != null) {
 			try {
@@ -173,7 +236,8 @@ public class Pubsub extends Service {
 			} catch (JSONException e) {
 				if (mHandler != null)
 					mHandler.obtainMessage(ERROR, -1, -1,
-							"Failed to construct publish-message").sendToTarget();
+							"Failed to construct publish-message")
+							.sendToTarget();
 				Log.e(TAG, e.getMessage(), e);
 			}
 		}
@@ -211,10 +275,10 @@ public class Pubsub extends Service {
 
 	/**
 	 * 
-	 * @author Andreas Göransson
+	 * @author Andreas Gï¿½ransson
 	 * 
 	 */
-	private class PubsubComm extends AsyncTask<Void, Void, Void> {
+	private class PubsubComm extends AsyncTask<Void, String, Void> {
 
 		private static final String TAG = "PubsubComm";
 
@@ -251,10 +315,12 @@ public class Pubsub extends Service {
 
 					if (mHandler != null && bytes > -1) {
 						// Always send the raw text
-						mHandler.obtainMessage(RAW_TEXT, bytes, -1, buffer).sendToTarget();
+						mHandler.obtainMessage(RAW_TEXT, bytes, -1, buffer)
+								.sendToTarget();
 
-						// Send the appropriate callback from "callbacks" map based on
-						// message recieved.
+						// Parse the message and send to the right callback
+						String readMessage = new String(buffer, 0, bytes);
+						publishProgress(readMessage);
 					}
 
 				} catch (IOException e) {
@@ -266,6 +332,29 @@ public class Pubsub extends Service {
 			}
 
 			return null;
+		}
+
+		@Override
+		protected void onProgressUpdate(String... values) {
+			/*
+			 * For now we'll use the progressupdate for sending callback
+			 * messages back to the activity, this might not be optimal because
+			 * the messages might stack and deliver several at once (i.e. they
+			 * might not be delivered "on time")
+			 */
+			for (int i = 0; i < values.length; i++) {
+				try {
+					JSONObject message = new JSONObject(values[i]);
+					int callback_id = message.getInt("id");
+					JSONObject doc = message.getJSONObject("doc");
+					// Send the message
+					mHandler.obtainMessage(callback_id, doc).sendToTarget();
+				} catch (JSONException e) {
+					Log.e(TAG, e.getMessage(), e);
+				}
+			}
+
+			super.onProgressUpdate(values);
 		}
 
 		@Override
@@ -283,7 +372,8 @@ public class Pubsub extends Service {
 		}
 
 		/**
-		 * Just stops the streams and sends the TERMINATED message to the activity.
+		 * Just stops the streams and sends the TERMINATED message to the
+		 * activity.
 		 */
 		private void stop() {
 			try {
@@ -294,7 +384,6 @@ public class Pubsub extends Service {
 				e.printStackTrace();
 			}
 
-			
 			if (mHandler != null)
 				mHandler.obtainMessage(TERMINATED).sendToTarget();
 
@@ -306,14 +395,15 @@ public class Pubsub extends Service {
 		 * @param buffer
 		 */
 		public void write(byte[] buffer) {
-			// Need to attach the "header" and "footer" for the buffer, otherwise the
+			// Need to attach the "header" and "footer" for the buffer,
+			// otherwise the
 			// hub won't recognize the package.
 			byte[] sendbuffer = new byte[buffer.length + 2];
 			sendbuffer[0] = (byte) 0x000000;
 			for (int i = 1; i < sendbuffer.length - 1; i++)
 				sendbuffer[i] = buffer[i - 1];
 			sendbuffer[sendbuffer.length - 1] = (byte) 0xFFFFFD;
-			
+
 			try {
 				mOutputStream.write(sendbuffer);
 			} catch (IOException e) {
