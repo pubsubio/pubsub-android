@@ -1,5 +1,6 @@
 package pubsub.io.android.example;
 
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -14,7 +15,6 @@ import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
 import android.os.Bundle;
-import android.os.Debug;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Message;
@@ -34,7 +34,7 @@ public class Pubsub_exampleActivity extends Activity implements
 
 	protected static final String TAG = "Pubsub_exampleActivity";
 
-	protected static final int MY_HANDLER = 1241;
+	protected static final int VERSION_FILTER = 1241;
 
 	private boolean publishing_acc = false;
 
@@ -62,11 +62,16 @@ public class Pubsub_exampleActivity extends Activity implements
 
 				JSONObject doc = new JSONObject();
 				try {
-					doc.put("where", "android");
+					doc.put("name", "android");
+					JSONArray authors = new JSONArray();
+					authors.put("mathias");
+					authors.put("ian");
+					doc.put("authors", authors);
+					doc.put("version", 0.1);
 				} catch (JSONException e) {
-					// TODO Auto-generated catch block
 					e.printStackTrace();
 				}
+
 				mPubsub.publish(doc);
 			}
 		});
@@ -114,7 +119,16 @@ public class Pubsub_exampleActivity extends Activity implements
 
 			// Subscribe to something with a specific handler
 			JSONObject json_filter = new JSONObject();
-			mPubsub.subscribe(json_filter, MY_HANDLER);
+			try {
+				json_filter.put("name", "android");
+				JSONObject version = new JSONObject();
+				version.put("$gt", 0.1);
+				json_filter.put("version", version);
+			} catch (JSONException e) {
+				e.printStackTrace();
+			}
+
+			mPubsub.subscribe(json_filter, VERSION_FILTER);
 		}
 
 		@Override
@@ -145,7 +159,7 @@ public class Pubsub_exampleActivity extends Activity implements
 				JSONObject error = (JSONObject) msg.obj;
 				Log.i(TAG, error.toString());
 				break;
-			case MY_HANDLER:
+			case VERSION_FILTER:
 				// Get the message (doc) from the server.
 				Log.i(TAG, "MY_HANDLER: " + ((JSONObject) msg.obj).toString());
 				break;
