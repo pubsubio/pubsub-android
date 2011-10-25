@@ -14,6 +14,7 @@ import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
 import android.os.Bundle;
+import android.os.Debug;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Message;
@@ -35,6 +36,8 @@ public class Pubsub_exampleActivity extends Activity implements
 
 	protected static final int MY_HANDLER = 1241;
 
+	private boolean publishing_acc = false;
+
 	// Pubsub object
 	private Pubsub mPubsub;
 
@@ -50,13 +53,13 @@ public class Pubsub_exampleActivity extends Activity implements
 		mSensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
 		mAccelerometer = mSensorManager
 				.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
-		
-		Button publish = (Button) findViewById(R.id.button1);
-		publish.setOnClickListener(new OnClickListener() {
-			
+
+		Button publish_message = (Button) findViewById(R.id.button1);
+		publish_message.setOnClickListener(new OnClickListener() {
+
 			@Override
 			public void onClick(View v) {
-				
+
 				JSONObject doc = new JSONObject();
 				try {
 					doc.put("where", "android");
@@ -65,6 +68,15 @@ public class Pubsub_exampleActivity extends Activity implements
 					e.printStackTrace();
 				}
 				mPubsub.publish(doc);
+			}
+		});
+
+		Button publish_accelerometer = (Button) findViewById(R.id.button1);
+		publish_accelerometer.setOnClickListener(new OnClickListener() {
+
+			@Override
+			public void onClick(View v) {
+				publishing_acc = !publishing_acc;
 			}
 		});
 	}
@@ -98,13 +110,9 @@ public class Pubsub_exampleActivity extends Activity implements
 		public void onServiceConnected(ComponentName className, IBinder service) {
 			mPubsub = ((Pubsub.LocalBinder) service).getService();
 			mPubsub.setHandler(mHandler);
-			mPubsub.connect("10.3.3.11", "10547");
+			mPubsub.connect("android");
 
-			// In other clients the "connect" and the "sub" method are done at
-			// the same time... this should probably be changed!
-			mPubsub.sub("android");
-
-			// Subscribe to everything?
+			// Subscribe to something with a specific handler
 			JSONObject json_filter = new JSONObject();
 			mPubsub.subscribe(json_filter, MY_HANDLER);
 		}
@@ -126,15 +134,20 @@ public class Pubsub_exampleActivity extends Activity implements
 				// construct a string from the valid bytes in the buffer
 				String readMessage = new String(readBuf, 0, msg.arg1);
 				// TODO maybe log the un-parsed message?
+				Log.i(TAG, readMessage);
 				break;
 			case Pubsub.TERMINATED:
 				// TODO react to connection failures?
 				break;
 			case Pubsub.ERROR:
-				// TODO get error message...
+				// Fetch the error (a JSONObject) and do something with it!
+				// {"simple":"The basic message, "error":"The real error"}
+				JSONObject error = (JSONObject) msg.obj;
+				Log.i(TAG, error.toString());
 				break;
 			case MY_HANDLER:
-				Log.i(TAG, "MY_HANDLER message: " + (String) msg.obj);
+				// Get the message (doc) from the server.
+				Log.i(TAG, "MY_HANDLER: " + ((JSONObject) msg.obj).toString());
 				break;
 			}
 		}
@@ -147,7 +160,7 @@ public class Pubsub_exampleActivity extends Activity implements
 	@Override
 	public void onSensorChanged(SensorEvent event) {
 		// We're just making sure that
-		if (mPubsub != null && mPubsub.isSubscribed()) {
+		if (publishing_acc) {
 			float[] vals = event.values;
 
 			JSONObject doc = new JSONObject();
@@ -160,7 +173,7 @@ public class Pubsub_exampleActivity extends Activity implements
 				e.printStackTrace();
 			}
 
-			// mPubsub.publish(doc);
+			mPubsub.publish(doc);
 		}
 	}
 }

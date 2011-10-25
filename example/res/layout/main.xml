@@ -17,4 +17,11 @@
     android:layout_margin="5dp"
     android:text="Publish a message" />
 
+<Button
+    android:id="@+id/button2"
+    android:layout_width="fill_parent"
+    android:layout_height="wrap_content"
+    android:layout_margin="5dp"
+    android:text="Publish accelerometer" />
+
 </LinearLayout>
