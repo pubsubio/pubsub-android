@@ -27,6 +27,8 @@ public class Pubsub extends Service {
 	private static final String TAG = "Pubsub";
 	boolean DEBUG = true;
 
+	// Hmm, what the heck did I use this for again? It was there for a reason, I
+	// just can't remember. I think I'm loosing my mind...
 	public static final float VERSION = 1.0f;
 
 	// Callback constants
@@ -34,10 +36,7 @@ public class Pubsub extends Service {
 	public static final int TERMINATED = 11;
 	public static final int ERROR = 12;
 
-	// The binder
 	private LocalBinder mBinder = new LocalBinder();
-
-	// The comm
 	private PubsubComm mPubsubComm = null;
 	private Handler mHandler;
 
@@ -80,6 +79,10 @@ public class Pubsub extends Service {
 		if (DEBUG)
 			Log.i(TAG, "onUnbind()");
 
+		// Could force stop communication here if we wanted, but that makes no sense
+		// since that happens in onPause... should communication stop just because
+		// you're getting a phonecall? That might be a limitation in Android though,
+		// I don't know...
 		return super.onUnbind(intent);
 	}
 
@@ -99,26 +102,33 @@ public class Pubsub extends Service {
 		super.onDestroy();
 	}
 
+	/**
+	 * Connect to the default sub at hub.pubsub.io.
+	 */
 	public void connect() {
 		// connect("hub.pubsub.io", "10547", "/");
 		connect("79.125.4.43", "10547", "/");
 	}
 
+	/**
+	 * Connect to a specified sub at hub.pubsub.io.
+	 * 
+	 * @param sub
+	 */
 	public void connect(String sub) {
 		// connect("hub.pubsub.io", "10547", sub);
 		connect("79.125.4.43", "10547", sub);
 	}
 
 	/**
-	 * Connect to hub. We need borth arguments as the same type to easily
-	 * forward it to the Task.
+	 * Connect to a specified sub on a specified pubsub hub.
 	 * 
 	 * @param url
 	 * @param port
 	 */
 	public void connect(String host, String port, String sub) {
 		if (DEBUG)
-			Log.i(TAG, "connect(" + host + "," + port + ")");
+			Log.i(TAG, "connect(" + host + ", " + port + ", " + sub + ")");
 
 		if (mPubsubComm == null) {
 			Socket socket = null;
@@ -140,8 +150,7 @@ public class Pubsub extends Service {
 				sub(sub);
 			} else {
 				// If we failed to init the socket, just terminate the app?
-				// Might cause
-				// null pointers if the handler isn't set though... meh!
+				// Might cause null pointers if the handler isn't set though... meh!
 				mHandler.obtainMessage(TERMINATED).sendToTarget();
 			}
 		} else {
@@ -151,7 +160,11 @@ public class Pubsub extends Service {
 	}
 
 	/**
-	 * Detects if we're subscribed to a sub.
+	 * Detects if we're subscribed to a sub. THIS DOESNT WORK! IT WILL
+	 * AUTOMATICALLY RETURN TRUE RIGHT NOW... how can we detect if it's connected?
+	 * some sort of ping perhaps? or a query even... or maybe trust the developer
+	 * to do the right thing? (yeah, right... that'll happen, I can't even do the
+	 * right thing for crying out loud)
 	 * 
 	 * @return
 	 */
@@ -168,7 +181,7 @@ public class Pubsub extends Service {
 	public void sub(String sub) {
 		if (mPubsubComm != null) {
 			try {
-				write(PubsubParser.sub(sub));
+				mPubsubComm.write(PubsubParser.sub(sub).getBytes());
 			} catch (JSONException e) {
 				if (mHandler != null) {
 					JSONObject error = new JSONObject();
@@ -186,7 +199,9 @@ public class Pubsub extends Service {
 	}
 
 	/**
-	 * Subscribe to a filter on the connected sub.
+	 * Subscribe to a filter, with a specified handler_callback, on the connected
+	 * sub. The handler_callback should be a declared constant, and it should be
+	 * used in the Handler of your activity!
 	 * 
 	 * @param json_filter
 	 * @param handler_callback
@@ -195,13 +210,13 @@ public class Pubsub extends Service {
 		if (mPubsubComm != null) {
 			try {
 				// Send the message to the hub
-				write(PubsubParser.subscribe(json_filter, handler_callback));
+				mPubsubComm.write(PubsubParser.subscribe(json_filter, handler_callback)
+						.getBytes());
 			} catch (JSONException e) {
 				if (mHandler != null) {
 					JSONObject error = new JSONObject();
 					try {
-						error.put("simple",
-								"Failed to construct subscribe message.");
+						error.put("simple", "Failed to construct subscribe message.");
 						error.put("error", e.getMessage());
 						mHandler.obtainMessage(ERROR, error).sendToTarget();
 					} catch (JSONException e1) {
@@ -214,7 +229,7 @@ public class Pubsub extends Service {
 	}
 
 	/**
-	 * Unsubscribe from the specified filter.
+	 * Unsubscribe the specified handler_callback.
 	 * 
 	 * @param handler_callback
 	 */
@@ -222,34 +237,13 @@ public class Pubsub extends Service {
 		if (mPubsubComm != null) {
 			try {
 				// Send the message to the hub
-				write(PubsubParser.unsubscribe(handler_callback));
+				mPubsubComm
+						.write(PubsubParser.unsubscribe(handler_callback).getBytes());
 			} catch (JSONException e) {
 				if (mHandler != null) {
 					JSONObject error = new JSONObject();
 					try {
-						error.put("simple",
-								"Failed to construct unsubscribe message.");
-						error.put("error", e.getMessage());
-						mHandler.obtainMessage(ERROR, error).sendToTarget();
-					} catch (JSONException e1) {
-						Log.e(TAG, e.getMessage(), e);
-					}
-				}
-				Log.e(TAG, e.getMessage(), e);
-			}
-		}
-	}
-
-	public void publish(JSONObject doc) {
-		if (mPubsubComm != null) {
-			try {
-				write(PubsubParser.publish(doc));
-			} catch (JSONException e) {
-				if (mHandler != null) {
-					JSONObject error = new JSONObject();
-					try {
-						error.put("simple",
-								"Failed to construct publish message.");
+						error.put("simple", "Failed to construct unsubscribe message.");
 						error.put("error", e.getMessage());
 						mHandler.obtainMessage(ERROR, error).sendToTarget();
 					} catch (JSONException e1) {
@@ -262,7 +256,34 @@ public class Pubsub extends Service {
 	}
 
 	/**
+	 * Publish a document to the connected sub.
 	 * 
+	 * @param doc
+	 */
+	public void publish(JSONObject doc) {
+		if (mPubsubComm != null) {
+			try {
+				mPubsubComm.write(PubsubParser.publish(doc).getBytes());
+			} catch (JSONException e) {
+				if (mHandler != null) {
+					JSONObject error = new JSONObject();
+					try {
+						// This comment is kind of useless!
+						error.put("simple", "Failed to construct publish message.");
+						error.put("error", e.getMessage());
+						mHandler.obtainMessage(ERROR, error).sendToTarget();
+					} catch (JSONException e1) {
+						Log.e(TAG, e.getMessage(), e);
+					}
+				}
+				Log.e(TAG, e.getMessage(), e);
+			}
+		}
+	}
+
+	/**
+	 * Disconnect the communication, this will stop the thread (and consequently
+	 * all socket communication too)
 	 */
 	public void disconnect() {
 		if (DEBUG)
@@ -273,7 +294,10 @@ public class Pubsub extends Service {
 	}
 
 	/**
-	 * Set the callback handler for the service.
+	 * Set the callback handler for the service. This is the handler where all
+	 * callbacks from the hub will arrive, and also some library callbacks can be
+	 * read from the same handler. Library handlers include RAW_TEXT, TERMINATED,
+	 * and ERROR.
 	 * 
 	 * @param handler
 	 */
@@ -282,10 +306,15 @@ public class Pubsub extends Service {
 	}
 
 	/**
-	 * Basic write, no encoding or formatting.
+	 * Basic write. For the love of god, don't use this!!! All hell will break
+	 * loose and tiny ants will eat your skin off when you sleep!
+	 * 
+	 * Nah, it's not that bad... chances are you'll do it wrong though so it won't
+	 * work.
 	 * 
 	 * @param message
 	 */
+	@Deprecated
 	public void write(String message) {
 		if (DEBUG)
 			Log.i(TAG, "Write: " + message);
@@ -294,32 +323,42 @@ public class Pubsub extends Service {
 	}
 
 	/**
+	 * My name just never looks right in these comments... blasted English
+	 * language, learn to use wierd Swedish characters, damn you!
 	 * 
 	 * @author Andreas G�ransson
 	 * 
 	 */
 	private class PubsubComm extends AsyncTask<Void, String, Void> {
-
+		// Just a log-tag
 		private static final String TAG = "PubsubComm";
 
+		// nom nom nom
 		private Socket mSocket;
 		private InputStream mInputStream;
 		private OutputStream mOutputStream;
 
 		public PubsubComm(Socket socket) {
+			// Hello teacher tell me what's my lesson
 			mSocket = socket;
 
+			// Look right through me, look right through me
 			InputStream tmpIn = null;
 			OutputStream tmpOut = null;
 
 			try {
+				// And I find it kind of funny
 				tmpIn = socket.getInputStream();
+				// I find it kind of sad
 				tmpOut = socket.getOutputStream();
 			} catch (IOException e) {
+				// The dreams in which I'm dying is the best I've ever had
 				Log.e(TAG, "temp sockets not created", e);
 			}
 
+			// I find it hard to tell you I find it hard to take
 			mInputStream = tmpIn;
+			// When people run in circles it's a very very... mad world, mad world
 			mOutputStream = tmpOut;
 		}
 
@@ -335,8 +374,7 @@ public class Pubsub extends Service {
 
 					if (mHandler != null && bytes > -1) {
 						// Always send the raw text
-						mHandler.obtainMessage(RAW_TEXT, bytes, -1, buffer)
-								.sendToTarget();
+						mHandler.obtainMessage(RAW_TEXT, bytes, -1, buffer).sendToTarget();
 
 						// Parse the message and send to the right callback
 						String readMessage = new String(buffer, 0, bytes);
@@ -357,10 +395,10 @@ public class Pubsub extends Service {
 		@Override
 		protected void onProgressUpdate(String... values) {
 			/*
-			 * For now we'll use the onProgressUpdate for sending callback
-			 * messages back to the activity, this might not be optimal because
-			 * the messages might stack and deliver several at once (i.e. they
-			 * might not be delivered "on time")
+			 * For now we'll use the onProgressUpdate for sending callback messages
+			 * back to the activity, this might not be optimal because the messages
+			 * might stack and deliver several at once (i.e. they might not be
+			 * delivered "on time")
 			 */
 			for (int i = 0; i < values.length; i++) {
 				try {
@@ -392,13 +430,13 @@ public class Pubsub extends Service {
 		}
 
 		/**
-		 * Just stops the streams and sends the TERMINATED message to the
-		 * activity.
+		 * Just stops the streams and sends the TERMINATED message to the activity.
 		 */
 		private void stop() {
 			if (DEBUG)
 				Log.i(TAG, "stop()");
 
+			// Just stop the blasted sockets lest the almighty Tengil smite ye!
 			try {
 				mInputStream.close();
 				mOutputStream.close();
@@ -425,8 +463,8 @@ public class Pubsub extends Service {
 		}
 
 		/**
-		 * This adds the required header and footer for the package, without
-		 * them the hub won't recognize the message.
+		 * This adds the required header and footer for the package, without them
+		 * the hub won't recognize the message.
 		 * 
 		 * @param buffer
 		 * @return

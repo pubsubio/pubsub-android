@@ -39,7 +39,7 @@ public class PubsubParser {
 
 		JSONObject root = new JSONObject();
 		root.put("name", "subscribe");
-		root.put("query", json_filter.toString());
+		root.put("query", json_filter);
 		root.put("id", handler_callback);
 
 		return root.toString();

@@ -34,8 +34,10 @@ public class Pubsub_exampleActivity extends Activity implements
 
 	protected static final String TAG = "Pubsub_exampleActivity";
 
+	// Custom handler callbacks
 	protected static final int VERSION_FILTER = 1241;
 
+	// Used to toggle the accelerometer publishing
 	private boolean publishing_acc = false;
 
 	// Pubsub object
@@ -51,8 +53,7 @@ public class Pubsub_exampleActivity extends Activity implements
 		setContentView(R.layout.main);
 
 		mSensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
-		mAccelerometer = mSensorManager
-				.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
+		mAccelerometer = mSensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
 
 		Button publish_message = (Button) findViewById(R.id.button1);
 		publish_message.setOnClickListener(new OnClickListener() {
@@ -76,7 +77,7 @@ public class Pubsub_exampleActivity extends Activity implements
 			}
 		});
 
-		Button publish_accelerometer = (Button) findViewById(R.id.button1);
+		Button publish_accelerometer = (Button) findViewById(R.id.button2);
 		publish_accelerometer.setOnClickListener(new OnClickListener() {
 
 			@Override
@@ -115,7 +116,7 @@ public class Pubsub_exampleActivity extends Activity implements
 		public void onServiceConnected(ComponentName className, IBinder service) {
 			mPubsub = ((Pubsub.LocalBinder) service).getService();
 			mPubsub.setHandler(mHandler);
-			mPubsub.connect("android");
+			mPubsub.connect("192.168.9.102", "10547", "android");
 
 			// Subscribe to something with a specific handler
 			JSONObject json_filter = new JSONObject();
