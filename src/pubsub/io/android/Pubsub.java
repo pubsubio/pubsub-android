@@ -19,7 +19,7 @@ import android.util.Log;
 
 /**
  * 
- * @author Andreas G�ransson
+ * @author Andreas Göransson
  * 
  */
 public class Pubsub extends Service {

@@ -14,6 +14,9 @@ import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
+import android.location.Location;
+import android.location.LocationListener;
+import android.location.LocationManager;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
@@ -30,7 +33,7 @@ import android.widget.Button;
  * 
  */
 public class Pubsub_exampleActivity extends Activity implements
-		SensorEventListener {
+		SensorEventListener, LocationListener {
 
 	protected static final String TAG = "Pubsub_exampleActivity";
 
@@ -40,11 +43,16 @@ public class Pubsub_exampleActivity extends Activity implements
 	// Used to toggle the accelerometer publishing
 	private boolean publishing_acc = false;
 
+	// Used to toggle the gps publishing
+	private boolean publishing_gps = false;
+
 	// Pubsub object
 	private Pubsub mPubsub;
 
 	private SensorManager mSensorManager;
 	private Sensor mAccelerometer;
+
+	private LocationManager mLocationManager;
 
 	/** Called when the activity is first created. */
 	@Override
@@ -52,9 +60,16 @@ public class Pubsub_exampleActivity extends Activity implements
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.main);
 
+		// Sensors
 		mSensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
-		mAccelerometer = mSensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
+		mAccelerometer = mSensorManager
+				.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
 
+		mLocationManager = (LocationManager) getSystemService(LOCATION_SERVICE);
+		mLocationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER,
+				500, 5, this);
+
+		// UI
 		Button publish_message = (Button) findViewById(R.id.button1);
 		publish_message.setOnClickListener(new OnClickListener() {
 
@@ -83,6 +98,15 @@ public class Pubsub_exampleActivity extends Activity implements
 			@Override
 			public void onClick(View v) {
 				publishing_acc = !publishing_acc;
+			}
+		});
+
+		Button publish_gps = (Button) findViewById(R.id.button3);
+		publish_gps.setOnClickListener(new OnClickListener() {
+
+			@Override
+			public void onClick(View v) {
+				publishing_gps = !publishing_gps;
 			}
 		});
 	}
@@ -116,7 +140,7 @@ public class Pubsub_exampleActivity extends Activity implements
 		public void onServiceConnected(ComponentName className, IBinder service) {
 			mPubsub = ((Pubsub.LocalBinder) service).getService();
 			mPubsub.setHandler(mHandler);
-			mPubsub.connect("192.168.9.102", "10547", "android");
+			mPubsub.connect("127.0.0.1", "9000", "android");
 
 			// Subscribe to something with a specific handler
 			JSONObject json_filter = new JSONObject();
@@ -190,5 +214,36 @@ public class Pubsub_exampleActivity extends Activity implements
 
 			mPubsub.publish(doc);
 		}
+	}
+
+	@Override
+	public void onLocationChanged(Location location) {
+		// We're just making sure that
+		if (publishing_gps) {
+			double lat = location.getLatitude();
+			double lon = location.getLongitude();
+
+			JSONObject doc = new JSONObject();
+			try {
+				doc.put("lat", lat);
+				doc.put("lon", lon);
+			} catch (JSONException e) {
+				e.printStackTrace();
+			}
+
+			mPubsub.publish(doc);
+		}
+	}
+
+	@Override
+	public void onProviderDisabled(String provider) {
+	}
+
+	@Override
+	public void onProviderEnabled(String provider) {
+	}
+
+	@Override
+	public void onStatusChanged(String provider, int status, Bundle extras) {
 	}
 }
