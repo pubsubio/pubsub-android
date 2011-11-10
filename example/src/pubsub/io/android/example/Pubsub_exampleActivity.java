@@ -10,6 +10,7 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
+import android.graphics.Color;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
@@ -25,11 +26,12 @@ import android.util.Log;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.widget.Button;
+import android.widget.TextView;
 
 /**
  * Example pubsub.io - Android client.
  * 
- * @author Andreas G�ransson
+ * @author Andreas Goransson
  * 
  */
 public class Pubsub_exampleActivity extends Activity implements
@@ -54,6 +56,8 @@ public class Pubsub_exampleActivity extends Activity implements
 
 	private LocationManager mLocationManager;
 
+	private TextView txtAccelerometer, txtGps;
+
 	/** Called when the activity is first created. */
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
@@ -62,12 +66,11 @@ public class Pubsub_exampleActivity extends Activity implements
 
 		// Sensors
 		mSensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
-		mAccelerometer = mSensorManager
-				.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
+		mAccelerometer = mSensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
 
 		mLocationManager = (LocationManager) getSystemService(LOCATION_SERVICE);
-		mLocationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER,
-				500, 5, this);
+		mLocationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 500,
+				5, this);
 
 		// UI
 		Button publish_message = (Button) findViewById(R.id.button1);
@@ -92,21 +95,36 @@ public class Pubsub_exampleActivity extends Activity implements
 			}
 		});
 
+		txtAccelerometer = (TextView) findViewById(R.id.textView2);
+		txtAccelerometer.setText((publishing_acc == true ? "ON" : "OFF"));
+		txtAccelerometer.setBackgroundColor((publishing_acc == true ? Color.GREEN
+				: Color.RED));
 		Button publish_accelerometer = (Button) findViewById(R.id.button2);
 		publish_accelerometer.setOnClickListener(new OnClickListener() {
 
 			@Override
 			public void onClick(View v) {
 				publishing_acc = !publishing_acc;
+				txtAccelerometer.setText((publishing_acc == true ? "ON" : "OFF"));
+				txtAccelerometer
+						.setBackgroundColor((publishing_acc == true ? Color.GREEN
+								: Color.RED));
 			}
 		});
 
+		txtGps = (TextView) findViewById(R.id.textView3);
+		txtGps.setText((publishing_gps == true ? "ON" : "OFF"));
+		txtGps
+				.setBackgroundColor((publishing_gps == true ? Color.GREEN : Color.RED));
 		Button publish_gps = (Button) findViewById(R.id.button3);
 		publish_gps.setOnClickListener(new OnClickListener() {
 
 			@Override
 			public void onClick(View v) {
 				publishing_gps = !publishing_gps;
+				txtGps.setText((publishing_gps == true ? "ON" : "OFF"));
+				txtGps.setBackgroundColor((publishing_gps == true ? Color.GREEN
+						: Color.RED));
 			}
 		});
 	}
@@ -138,9 +156,12 @@ public class Pubsub_exampleActivity extends Activity implements
 
 		@Override
 		public void onServiceConnected(ComponentName className, IBinder service) {
+			Log.i(TAG, "onServiceConnected");
+
 			mPubsub = ((Pubsub.LocalBinder) service).getService();
 			mPubsub.setHandler(mHandler);
-			mPubsub.connect("127.0.0.1", "9000", "android");
+			mPubsub.connect("android");
+			// mPubsub.connect("192.168.0.147", "9000", "android");
 
 			// Subscribe to something with a specific handler
 			JSONObject json_filter = new JSONObject();
@@ -158,6 +179,8 @@ public class Pubsub_exampleActivity extends Activity implements
 
 		@Override
 		public void onServiceDisconnected(ComponentName className) {
+			Log.i(TAG, "onServiceDisconnected");
+
 			mPubsub.disconnect();
 			mPubsub = null;
 			mPubsub.setHandler(null);

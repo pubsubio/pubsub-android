@@ -18,8 +18,15 @@ import android.os.IBinder;
 import android.util.Log;
 
 /**
+ * Pubsub.io Android service class. This class allows an Android app to send to,
+ * and read from, pubsub.io subs.
  * 
- * @author Andreas Göransson
+ * The reason for having this as a service instead of a component of an app, is
+ * if the library should be used in a passive sense as well as active we need to
+ * be able of reading the connection while the application is not in the
+ * foreground.
+ * 
+ * @author Andreas Goransson
  * 
  */
 public class Pubsub extends Service {
@@ -39,6 +46,10 @@ public class Pubsub extends Service {
 	private LocalBinder mBinder = new LocalBinder();
 	private PubsubComm mPubsubComm = null;
 	private Handler mHandler;
+
+	private String mHost = "";
+	private String mPort = "";
+	private String mSub = "";
 
 	/**
 	 * Class for clients to access. Because we know this service always runs in
@@ -130,7 +141,14 @@ public class Pubsub extends Service {
 		if (DEBUG)
 			Log.i(TAG, "connect(" + host + ", " + port + ", " + sub + ")");
 
-		if (mPubsubComm == null) {
+		mHost = host;
+		mPort = port;
+		mSub = sub;
+
+		if (mPubsubComm == null)
+			mPubsubComm = new PubsubComm();
+
+		if (!mPubsubComm.isConnected()) {
 			Socket socket = null;
 			try {
 				socket = new Socket(host, Integer.parseInt(port));
@@ -338,6 +356,9 @@ public class Pubsub extends Service {
 		private InputStream mInputStream;
 		private OutputStream mOutputStream;
 
+		public PubsubComm() {
+		}
+
 		public PubsubComm(Socket socket) {
 			// Hello teacher tell me what's my lesson
 			mSocket = socket;
@@ -362,6 +383,10 @@ public class Pubsub extends Service {
 			mOutputStream = tmpOut;
 		}
 
+		public boolean isConnected() {
+			return (mSocket != null && mSocket.isConnected());
+		}
+
 		@Override
 		protected Void doInBackground(Void... params) {
 			byte[] buffer = new byte[1024];
@@ -373,20 +398,25 @@ public class Pubsub extends Service {
 					bytes = mInputStream.read(buffer);
 
 					if (mHandler != null && bytes > -1) {
+						// Parse the message and send to the right callback
+						String readMessage = new String(buffer, 0, bytes);
+
+						// TODO Possibly remove this (for testing on the simple echo-server)
+						readMessage = readMessage.substring(readMessage.indexOf('{'),
+								readMessage.lastIndexOf('}') + 1);
+
 						// Always send the raw text
 						mHandler.obtainMessage(RAW_TEXT, bytes, -1, buffer).sendToTarget();
 
-						// Parse the message and send to the right callback
-						String readMessage = new String(buffer, 0, bytes);
 						publishProgress(readMessage);
 					}
 
 				} catch (IOException e) {
 					Log.e(TAG, "disconnected", e);
 					// TODO, restart the thing if it failed?
+					cancel(true);
 					break;
 				}
-
 			}
 
 			return null;
@@ -459,6 +489,7 @@ public class Pubsub extends Service {
 				mOutputStream.write(attachHeaderAndFooter(buffer));
 			} catch (IOException e) {
 				Log.e(TAG, "Exception during write", e);
+				stop();
 			}
 		}
 
