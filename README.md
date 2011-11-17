@@ -24,8 +24,30 @@
 		}
 	};
 ```
-	
-**Then, create the Handler. This will act as a message callback between the Servive and your Activity.**
+
+**Now we can register callbacks that our app will react to, these are just plain integers (They should be unique!).**
+
+``` java
+// Create your own callback id, random number. Make sure they don't have the same values as any of the Pubsub constants.
+private int MY_OWN_CALLBACK = 6322;
+
+// Use our new callback id to subscribe to specific events on the sub
+			JSONObject json_filter = new JSONObject();
+
+// Our filter is currently looking for version numbers that are GREATER THAN 0.1!
+			try {
+				JSONObject version = new JSONObject();
+				version.put("$gt", 0.1);
+
+				json_filter.put("version", version);
+			} catch (JSONException e) {
+				e.printStackTrace();
+			}
+
+			mPubsub.subscribe(json_filter, VERSION_FILTER);
+```
+
+**Then, create the Handler. This will act as a message callback between the Service and your Activity.**
 
 ``` java
 	private Handler mHandler = new Handler() {
@@ -43,6 +65,10 @@
 			case Pubsub.ERROR:
 				// TODO Read error messages here...
 				break;
+			case MY_OWN_CALLBACK:
+				JSONObject doc = (JSONObject) msg.obj;
+				doc.getFloat("version");
+				break;
 			}
 		}
 	};
@@ -55,7 +81,6 @@
 	protected void onResume() {
 		// Connect to the service
 		Intent intent = new Intent(this, Pubsub.class);
-		startService(intent);
 		bindService(intent, serviceConnection, Context.BIND_AUTO_CREATE);
 
 		super.onResume();
