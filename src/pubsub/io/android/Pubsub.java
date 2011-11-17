@@ -90,10 +90,14 @@ public class Pubsub extends Service {
 		if (DEBUG)
 			Log.i(TAG, "onUnbind()");
 
-		// Could force stop communication here if we wanted, but that makes no sense
-		// since that happens in onPause... should communication stop just because
-		// you're getting a phonecall? That might be a limitation in Android though,
-		// I don't know...
+		/*
+		 * Could force stop communication here if we wanted, but that makes no
+		 * sense since that happens in onPause... should communication stop just
+		 * because you're getting a phonecall? That might be a limitation in
+		 * Android though, I don't know... for now we'll assume that whenever an
+		 * application uses startService and then bindService they WANT it to be
+		 * always connected.
+		 */
 		return super.onUnbind(intent);
 	}
 
@@ -168,7 +172,8 @@ public class Pubsub extends Service {
 				sub(sub);
 			} else {
 				// If we failed to init the socket, just terminate the app?
-				// Might cause null pointers if the handler isn't set though... meh!
+				// Might cause null pointers if the handler isn't set though...
+				// meh!
 				mHandler.obtainMessage(TERMINATED).sendToTarget();
 			}
 		} else {
@@ -179,10 +184,10 @@ public class Pubsub extends Service {
 
 	/**
 	 * Detects if we're subscribed to a sub. THIS DOESNT WORK! IT WILL
-	 * AUTOMATICALLY RETURN TRUE RIGHT NOW... how can we detect if it's connected?
-	 * some sort of ping perhaps? or a query even... or maybe trust the developer
-	 * to do the right thing? (yeah, right... that'll happen, I can't even do the
-	 * right thing for crying out loud)
+	 * AUTOMATICALLY RETURN TRUE RIGHT NOW... how can we detect if it's
+	 * connected? some sort of ping perhaps? or a query even... or maybe trust
+	 * the developer to do the right thing? (yeah, right... that'll happen, I
+	 * can't even do the right thing for crying out loud)
 	 * 
 	 * @return
 	 */
@@ -217,9 +222,9 @@ public class Pubsub extends Service {
 	}
 
 	/**
-	 * Subscribe to a filter, with a specified handler_callback, on the connected
-	 * sub. The handler_callback should be a declared constant, and it should be
-	 * used in the Handler of your activity!
+	 * Subscribe to a filter, with a specified handler_callback, on the
+	 * connected sub. The handler_callback should be a declared constant, and it
+	 * should be used in the Handler of your activity!
 	 * 
 	 * @param json_filter
 	 * @param handler_callback
@@ -228,13 +233,14 @@ public class Pubsub extends Service {
 		if (mPubsubComm != null) {
 			try {
 				// Send the message to the hub
-				mPubsubComm.write(PubsubParser.subscribe(json_filter, handler_callback)
-						.getBytes());
+				mPubsubComm.write(PubsubParser.subscribe(json_filter,
+						handler_callback).getBytes());
 			} catch (JSONException e) {
 				if (mHandler != null) {
 					JSONObject error = new JSONObject();
 					try {
-						error.put("simple", "Failed to construct subscribe message.");
+						error.put("simple",
+								"Failed to construct subscribe message.");
 						error.put("error", e.getMessage());
 						mHandler.obtainMessage(ERROR, error).sendToTarget();
 					} catch (JSONException e1) {
@@ -255,13 +261,14 @@ public class Pubsub extends Service {
 		if (mPubsubComm != null) {
 			try {
 				// Send the message to the hub
-				mPubsubComm
-						.write(PubsubParser.unsubscribe(handler_callback).getBytes());
+				mPubsubComm.write(PubsubParser.unsubscribe(handler_callback)
+						.getBytes());
 			} catch (JSONException e) {
 				if (mHandler != null) {
 					JSONObject error = new JSONObject();
 					try {
-						error.put("simple", "Failed to construct unsubscribe message.");
+						error.put("simple",
+								"Failed to construct unsubscribe message.");
 						error.put("error", e.getMessage());
 						mHandler.obtainMessage(ERROR, error).sendToTarget();
 					} catch (JSONException e1) {
@@ -287,7 +294,8 @@ public class Pubsub extends Service {
 					JSONObject error = new JSONObject();
 					try {
 						// This comment is kind of useless!
-						error.put("simple", "Failed to construct publish message.");
+						error.put("simple",
+								"Failed to construct publish message.");
 						error.put("error", e.getMessage());
 						mHandler.obtainMessage(ERROR, error).sendToTarget();
 					} catch (JSONException e1) {
@@ -313,9 +321,9 @@ public class Pubsub extends Service {
 
 	/**
 	 * Set the callback handler for the service. This is the handler where all
-	 * callbacks from the hub will arrive, and also some library callbacks can be
-	 * read from the same handler. Library handlers include RAW_TEXT, TERMINATED,
-	 * and ERROR.
+	 * callbacks from the hub will arrive, and also some library callbacks can
+	 * be read from the same handler. Library handlers include RAW_TEXT,
+	 * TERMINATED, and ERROR.
 	 * 
 	 * @param handler
 	 */
@@ -327,8 +335,8 @@ public class Pubsub extends Service {
 	 * Basic write. For the love of god, don't use this!!! All hell will break
 	 * loose and tiny ants will eat your skin off when you sleep!
 	 * 
-	 * Nah, it's not that bad... chances are you'll do it wrong though so it won't
-	 * work.
+	 * Nah, it's not that bad... chances are you'll do it wrong though so it
+	 * won't work.
 	 * 
 	 * @param message
 	 */
@@ -356,6 +364,8 @@ public class Pubsub extends Service {
 		private InputStream mInputStream;
 		private OutputStream mOutputStream;
 
+		private StringBuffer mStringBuffer;
+
 		public PubsubComm() {
 		}
 
@@ -379,8 +389,11 @@ public class Pubsub extends Service {
 
 			// I find it hard to tell you I find it hard to take
 			mInputStream = tmpIn;
-			// When people run in circles it's a very very... mad world, mad world
+			// When people run in circles it's a very very... mad world, mad
+			// world
 			mOutputStream = tmpOut;
+
+			mStringBuffer = new StringBuffer();
 		}
 
 		public boolean isConnected() {
@@ -398,15 +411,13 @@ public class Pubsub extends Service {
 					bytes = mInputStream.read(buffer);
 
 					if (mHandler != null && bytes > -1) {
-						// Parse the message and send to the right callback
+						// Add the read string to the StringBuffer for
+						// processing later
 						String readMessage = new String(buffer, 0, bytes);
 
-						// TODO Possibly remove this (for testing on the simple echo-server)
-						readMessage = readMessage.substring(readMessage.indexOf('{'),
-								readMessage.lastIndexOf('}') + 1);
-
 						// Always send the raw text
-						mHandler.obtainMessage(RAW_TEXT, bytes, -1, buffer).sendToTarget();
+						mHandler.obtainMessage(RAW_TEXT, bytes, -1, buffer)
+								.sendToTarget();
 
 						publishProgress(readMessage);
 					}
@@ -424,25 +435,105 @@ public class Pubsub extends Service {
 
 		@Override
 		protected void onProgressUpdate(String... values) {
-			/*
-			 * For now we'll use the onProgressUpdate for sending callback messages
-			 * back to the activity, this might not be optimal because the messages
-			 * might stack and deliver several at once (i.e. they might not be
-			 * delivered "on time")
-			 */
+			// Add all the strings to the StringBuffer
 			for (int i = 0; i < values.length; i++) {
-				try {
-					JSONObject message = new JSONObject(values[i]);
-					int callback_id = message.getInt("id");
-					JSONObject doc = message.getJSONObject("doc");
-					// Send the message
-					mHandler.obtainMessage(callback_id, doc).sendToTarget();
-				} catch (JSONException e) {
-					Log.e(TAG, e.getMessage(), e);
-				}
+				mStringBuffer.append(values[i]);
+			}
+
+			// Process the stringbuffer
+			while (hasNext(mStringBuffer)) {
+				// Get the next JSONObject
+				int[] startAndStop = getNext(mStringBuffer);
+				String next = mStringBuffer.substring(startAndStop[0],
+						startAndStop[1]);
+
+				// Process the JSON message
+				process(next);
+
+				// Delete the selected characters from the buffer.
+				mStringBuffer.delete(startAndStop[0], startAndStop[1]);
 			}
 
 			super.onProgressUpdate(values);
+		}
+
+		/**
+		 * Create and send the JSONObject to the Processing sketch.
+		 * 
+		 * @param next
+		 */
+		private void process(String json_formatted) {
+			try {
+				JSONObject message = new JSONObject(json_formatted);
+				int callback_id = message.getInt("id");
+				JSONObject doc = message.getJSONObject("doc");
+				// Send the message
+				mHandler.obtainMessage(callback_id, doc).sendToTarget();
+			} catch (JSONException e) {
+				Log.e(TAG, e.getMessage(), e);
+			}
+		}
+
+		/**
+		 * Detect if the StringBuffer has another JSON package inside it...
+		 * 
+		 * @param mStringBuffer
+		 * @return
+		 */
+		private boolean hasNext(StringBuffer mStringBuffer) {
+			int start = mStringBuffer.indexOf("{");
+			int end = -1;
+
+			if (start != -1) {
+				int starts = 1;
+				int ends = 0;
+
+				for (int i = 0; i < mStringBuffer.length(); i++) {
+
+					if (mStringBuffer.charAt(i) == '{') {
+						starts++;
+					} else if (mStringBuffer.charAt(i) == '}') {
+						ends++;
+						end = i + 1;
+					}
+
+					if (starts == ends)
+						break;
+				}
+			}
+
+			if (start != -1 && end != -1 && start < end)
+				return true;
+
+			return false;
+		}
+
+		private int[] getNext(StringBuffer mStringBuffer) {
+			int start = mStringBuffer.indexOf("{");
+			int end = -1;
+
+			if (start != -1) {
+				int starts = 1;
+				int ends = 0;
+
+				for (int i = 0; i < mStringBuffer.length(); i++) {
+
+					if (mStringBuffer.charAt(i) == '{') {
+						starts++;
+					} else if (mStringBuffer.charAt(i) == '}') {
+						ends++;
+						end = i + 1;
+					}
+
+					if (starts == ends)
+						break;
+				}
+			}
+
+			if (start != -1 && end != -1)
+				return new int[] { start, end };
+
+			return null;
 		}
 
 		@Override
@@ -460,7 +551,8 @@ public class Pubsub extends Service {
 		}
 
 		/**
-		 * Just stops the streams and sends the TERMINATED message to the activity.
+		 * Just stops the streams and sends the TERMINATED message to the
+		 * activity.
 		 */
 		private void stop() {
 			if (DEBUG)
@@ -494,8 +586,8 @@ public class Pubsub extends Service {
 		}
 
 		/**
-		 * This adds the required header and footer for the package, without them
-		 * the hub won't recognize the message.
+		 * This adds the required header and footer for the package, without
+		 * them the hub won't recognize the message.
 		 * 
 		 * @param buffer
 		 * @return

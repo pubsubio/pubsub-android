@@ -1,5 +1,7 @@
 package pubsub.io.android.example;
 
+import java.util.ArrayList;
+
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -25,7 +27,9 @@ import android.os.Message;
 import android.util.Log;
 import android.view.View;
 import android.view.View.OnClickListener;
+import android.widget.ArrayAdapter;
 import android.widget.Button;
+import android.widget.ListView;
 import android.widget.TextView;
 
 /**
@@ -40,7 +44,7 @@ public class Pubsub_exampleActivity extends Activity implements
 	protected static final String TAG = "Pubsub_exampleActivity";
 
 	// Custom handler callbacks
-	protected static final int VERSION_FILTER = 1241;
+	protected static final int VERSION_FILTER = 1;
 
 	// Used to toggle the accelerometer publishing
 	private boolean publishing_acc = false;
@@ -58,6 +62,10 @@ public class Pubsub_exampleActivity extends Activity implements
 
 	private TextView txtAccelerometer, txtGps;
 
+	private ArrayList<String> json_messages;
+
+	private ArrayAdapter<String> mArrayAdapter;
+
 	/** Called when the activity is first created. */
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
@@ -66,11 +74,12 @@ public class Pubsub_exampleActivity extends Activity implements
 
 		// Sensors
 		mSensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
-		mAccelerometer = mSensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
+		mAccelerometer = mSensorManager
+				.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
 
 		mLocationManager = (LocationManager) getSystemService(LOCATION_SERVICE);
-		mLocationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 500,
-				5, this);
+		mLocationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER,
+				500, 5, this);
 
 		// UI
 		Button publish_message = (Button) findViewById(R.id.button1);
@@ -97,15 +106,17 @@ public class Pubsub_exampleActivity extends Activity implements
 
 		txtAccelerometer = (TextView) findViewById(R.id.textView2);
 		txtAccelerometer.setText((publishing_acc == true ? "ON" : "OFF"));
-		txtAccelerometer.setBackgroundColor((publishing_acc == true ? Color.GREEN
-				: Color.RED));
+		txtAccelerometer
+				.setBackgroundColor((publishing_acc == true ? Color.GREEN
+						: Color.RED));
 		Button publish_accelerometer = (Button) findViewById(R.id.button2);
 		publish_accelerometer.setOnClickListener(new OnClickListener() {
 
 			@Override
 			public void onClick(View v) {
 				publishing_acc = !publishing_acc;
-				txtAccelerometer.setText((publishing_acc == true ? "ON" : "OFF"));
+				txtAccelerometer
+						.setText((publishing_acc == true ? "ON" : "OFF"));
 				txtAccelerometer
 						.setBackgroundColor((publishing_acc == true ? Color.GREEN
 								: Color.RED));
@@ -114,8 +125,8 @@ public class Pubsub_exampleActivity extends Activity implements
 
 		txtGps = (TextView) findViewById(R.id.textView3);
 		txtGps.setText((publishing_gps == true ? "ON" : "OFF"));
-		txtGps
-				.setBackgroundColor((publishing_gps == true ? Color.GREEN : Color.RED));
+		txtGps.setBackgroundColor((publishing_gps == true ? Color.GREEN
+				: Color.RED));
 		Button publish_gps = (Button) findViewById(R.id.button3);
 		publish_gps.setOnClickListener(new OnClickListener() {
 
@@ -127,6 +138,12 @@ public class Pubsub_exampleActivity extends Activity implements
 						: Color.RED));
 			}
 		});
+
+		json_messages = new ArrayList<String>();
+		mArrayAdapter = new ArrayAdapter<String>(this,
+				android.R.layout.simple_list_item_1, json_messages);
+		ListView mListView = (ListView) findViewById(R.id.listView1);
+		mListView.setAdapter(mArrayAdapter);
 	}
 
 	@Override
@@ -141,9 +158,10 @@ public class Pubsub_exampleActivity extends Activity implements
 
 	@Override
 	protected void onResume() {
-		// Connect to the service
+		// Connect to the service (DONT use startService unless that is your
+		// explicit intention for your app!)
 		Intent intent = new Intent(this, Pubsub.class);
-		startService(intent);
+		// startService(intent); // This is not recommended.
 		bindService(intent, serviceConnection, Context.BIND_AUTO_CREATE);
 
 		mSensorManager.registerListener(this, mAccelerometer,
@@ -161,14 +179,14 @@ public class Pubsub_exampleActivity extends Activity implements
 			mPubsub = ((Pubsub.LocalBinder) service).getService();
 			mPubsub.setHandler(mHandler);
 			mPubsub.connect("android");
-			// mPubsub.connect("192.168.0.147", "9000", "android");
 
 			// Subscribe to something with a specific handler
 			JSONObject json_filter = new JSONObject();
+
 			try {
-				json_filter.put("name", "android");
 				JSONObject version = new JSONObject();
 				version.put("$gt", 0.1);
+
 				json_filter.put("version", version);
 			} catch (JSONException e) {
 				e.printStackTrace();
@@ -192,11 +210,9 @@ public class Pubsub_exampleActivity extends Activity implements
 		public void handleMessage(Message msg) {
 			switch (msg.what) {
 			case Pubsub.RAW_TEXT:
+				// We can get the un-parsed message in here if we want...
 				byte[] readBuf = (byte[]) msg.obj;
-				// construct a string from the valid bytes in the buffer
 				String readMessage = new String(readBuf, 0, msg.arg1);
-				// TODO maybe log the un-parsed message?
-				Log.i(TAG, readMessage);
 				break;
 			case Pubsub.TERMINATED:
 				// TODO react to connection failures?
@@ -209,7 +225,8 @@ public class Pubsub_exampleActivity extends Activity implements
 				break;
 			case VERSION_FILTER:
 				// Get the message (doc) from the server.
-				Log.i(TAG, "MY_HANDLER: " + ((JSONObject) msg.obj).toString());
+				json_messages.add(0, ((JSONObject) msg.obj).toString());
+				mArrayAdapter.notifyDataSetChanged();
 				break;
 			}
 		}

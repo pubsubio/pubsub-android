@@ -4,11 +4,11 @@
 ## Install
 * TODO bullet list for installing the android library in Eclipse
 
-## Getting started
-*How to make use of Pubsub in your Android Activity*
+## Getting started with Pubsub.io for Android
 
-First, create a ServiceConnection in your activity. This is required because pubsub-android is a Service.
+**First, create a ServiceConnection in your activity. This is required because pubsub-android is a Service, and also where we define what hub & sub to connect to.**
 
+``` java
 	private ServiceConnection serviceConnection = new ServiceConnection() {
 		@Override
 		public void onServiceConnected(ComponentName className, IBinder service) {
@@ -23,9 +23,11 @@ First, create a ServiceConnection in your activity. This is required because pub
 			mPubsub.setHandler(null);
 		}
 	};
+```
 	
-Then, create the Handler. This will act as a message callback between the Servive and your Activity.
+**Then, create the Handler. This will act as a message callback between the Servive and your Activity.**
 
+``` java
 	private Handler mHandler = new Handler() {
 		@Override
 		public void handleMessage(Message msg) {
@@ -44,9 +46,11 @@ Then, create the Handler. This will act as a message callback between the Serviv
 			}
 		}
 	};
-	
-To start the service, you'll use an intent in the "onResume()" activity method.
+```
 
+**To start the service, you'll use an intent in the "onResume()" activity method.**
+
+``` java
 	@Override
 	protected void onResume() {
 		// Connect to the service
@@ -56,9 +60,11 @@ To start the service, you'll use an intent in the "onResume()" activity method.
 
 		super.onResume();
 	}
+```
 
-And make sure to disconnect from the service in "onPause()" too! Note, this will NOT shut down your connection.
+**And make sure to disconnect from the service in "onPause()" too! Note, this will NOT shut down your connection.**
 
+``` java
 	@Override
 	protected void onPause() {
 		// Disconnect from the service
@@ -66,7 +72,9 @@ And make sure to disconnect from the service in "onPause()" too! Note, this will
 
 		super.onPause();
 	}
-	
-Also, you must make sure NOT to forget your AndroidManifest, it's imperative that you make the following two changes!
+```
+
+## Also, you must make sure NOT to forget your AndroidManifest, it's imperative that you make the following two changes!
+
 * Add a <service> tag that points to the Pubsub service, otherwise you can't connect to it.
 * Add a <uses-permission> tag with the INTERNET rule.
