@@ -66,8 +66,12 @@ private int MY_OWN_CALLBACK = 6322;
 				// TODO Read error messages here...
 				break;
 			case MY_OWN_CALLBACK:
-				JSONObject doc = (JSONObject) msg.obj;
-				doc.getFloat("version");
+try {
+					double version = doc.getDouble("version");
+					Log.i(TAG, "Version message from Pubsub.io: " + version);
+				} catch (JSONException e) {
+					e.printStackTrace();
+				}
 				break;
 			}
 		}

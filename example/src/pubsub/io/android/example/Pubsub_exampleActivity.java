@@ -90,7 +90,6 @@ public class Pubsub_exampleActivity extends Activity implements
 
 				JSONObject doc = new JSONObject();
 				try {
-					doc.put("name", "android");
 					JSONArray authors = new JSONArray();
 					authors.put("mathias");
 					authors.put("ian");
@@ -200,8 +199,8 @@ public class Pubsub_exampleActivity extends Activity implements
 			Log.i(TAG, "onServiceDisconnected");
 
 			mPubsub.disconnect();
-			mPubsub = null;
 			mPubsub.setHandler(null);
+			mPubsub = null;
 		}
 	};
 
@@ -225,8 +224,16 @@ public class Pubsub_exampleActivity extends Activity implements
 				break;
 			case VERSION_FILTER:
 				// Get the message (doc) from the server.
-				json_messages.add(0, ((JSONObject) msg.obj).toString());
-				mArrayAdapter.notifyDataSetChanged();
+				JSONObject doc = (JSONObject) msg.obj;
+				try {
+					double version = doc.getDouble("version");
+
+					// Add the value to the ListView
+					json_messages.add(0, Double.toString(version));
+					mArrayAdapter.notifyDataSetChanged();
+				} catch (JSONException e) {
+					e.printStackTrace();
+				}
 				break;
 			}
 		}
