@@ -136,6 +136,10 @@ public class Pubsub extends Service {
 		if (DEBUG)
 			Log.i(TAG, "onDestroy()");
 
+		if (mPubsubComm != null) {
+			mPubsubComm.cancel(true);
+		}
+
 		super.onDestroy();
 	}
 

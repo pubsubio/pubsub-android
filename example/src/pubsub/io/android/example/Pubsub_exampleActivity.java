@@ -243,15 +243,16 @@ public class Pubsub_exampleActivity extends Activity implements
 			case VERSION_FILTER:
 				// Get the message (doc) from the server.
 				JSONObject doc = (JSONObject) msg.obj;
+				
 				try {
 					double version = doc.getDouble("version");
-
 					// Add the value to the ListView
 					json_messages.add(0, Double.toString(version));
 					mArrayAdapter.notifyDataSetChanged();
 				} catch (JSONException e) {
 					e.printStackTrace();
 				}
+				
 				break;
 			}
 		}

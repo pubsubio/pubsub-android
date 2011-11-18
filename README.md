@@ -2,7 +2,14 @@
 
 
 ## Install
-* TODO bullet list for installing the android library in Eclipse
+**Android libraries are somewhat different from normal Java libraries in that you will often download the whole Eclipse project rather than a pre-compiled .jar file. That's why you need:**
+
+1. Install a Git client for your computer
+2. Clone this repository by writing the following in the terminal. **git clone https://github.com/pubsubio/pubsub-android**
+3. Create your new Android project
+4. **Right-click** your **project** in the **Package Explorer** and select **Properties**
+5. Select **Android** and **scroll down** to the section called *Library*
+6. Press **Add** and select the library called **pubsub_android*
 
 ## Getting started with Pubsub.io for Android
 
