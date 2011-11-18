@@ -12,7 +12,7 @@
 4. **Right-click** the **Package Explorer** area (don't right-click a project!) and select **Import**
 5. Select **General** and then **Existing projects into workspace**
 6. Select the **Select root_directory** radio button and press **browse**
-7. Navigate to, and select, the directory/folder where you cloned the pubsub-android library
+7. Navigate to, and select, the directory/folder where you cloned the pubsub-android library (*see: point 2 in this list*)
 8. Press **Finish**
 
 **Consuming the library**
