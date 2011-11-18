@@ -8,8 +8,8 @@
 2. Clone this repository by writing the following in the terminal. **git clone https://github.com/pubsubio/pubsub-android**
 3. Create your new Android project
 4. **Right-click** your **project** in the **Package Explorer** and select **Properties**
-5. Select **Android** and **scroll down** to the section called *Library*
-6. Press **Add** and select the library called **pubsub_android*
+5. Select **Android** and **scroll down** to the section called **Library**
+6. Press **Add** and select the library called **pubsub_android**
 
 ## Getting started with Pubsub.io for Android
 
