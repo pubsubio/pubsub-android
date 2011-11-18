@@ -35,23 +35,23 @@
 **Now we can register callbacks that our app will react to, these are just plain integers (They should be unique!).**
 
 ``` java
-// Create your own callback id, random number. Make sure they don't have the same values as any of the Pubsub constants.
-private int MY_OWN_CALLBACK = 6322;
+	// Create your own callback id, random number. Make sure they don't have the same values as any of the Pubsub constants.
+	private int MY_OWN_CALLBACK = 6322;
 
-// Use our new callback id to subscribe to specific events on the sub
-			JSONObject json_filter = new JSONObject();
+	// Use our new callback id to subscribe to specific events on the sub
+	JSONObject json_filter = new JSONObject();
 
-// Our filter is currently looking for version numbers that are GREATER THAN 0.1!
-			try {
-				JSONObject version = new JSONObject();
-				version.put("$gt", 0.1);
+	// Our filter is currently looking for version numbers that are GREATER THAN 0.1!
+	try {
+		JSONObject version = new JSONObject();
+		version.put("$gt", 0.1);
 
-				json_filter.put("version", version);
-			} catch (JSONException e) {
-				e.printStackTrace();
-			}
+		json_filter.put("version", version);
+	} catch (JSONException e) {
+		e.printStackTrace();
+	}
 
-			mPubsub.subscribe(json_filter, VERSION_FILTER);
+	mPubsub.subscribe(json_filter, VERSION_FILTER);
 ```
 
 **Then, create the Handler. This will act as a message callback between the Service and your Activity.**
@@ -73,7 +73,7 @@ private int MY_OWN_CALLBACK = 6322;
 				// TODO Read error messages here...
 				break;
 			case MY_OWN_CALLBACK:
-try {
+				try {
 					double version = doc.getDouble("version");
 					Log.i(TAG, "Version message from Pubsub.io: " + version);
 				} catch (JSONException e) {
@@ -110,7 +110,7 @@ try {
 	}
 ```
 
-## Also, you must make sure NOT to forget your AndroidManifest, it's imperative that you make the following two changes!
+## Also, you must make sure NOT to forget your AndroidManifest, it's imperative that you make the following changes!
 
 * Add a <service> tag that points to the Pubsub service, otherwise you can't connect to it.
 * Add a <uses-permission> tag with the INTERNET rule.
