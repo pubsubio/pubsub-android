@@ -114,3 +114,4 @@ try {
 
 * Add a <service> tag that points to the Pubsub service, otherwise you can't connect to it.
 * Add a <uses-permission> tag with the INTERNET rule.
+* Add a <user-permission> tag with the ACCESS_NETWORK_STATE rule.
