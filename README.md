@@ -62,7 +62,7 @@
 		e.printStackTrace();
 	}
 
-	mPubsub.subscribe(json_filter, VERSION_FILTER);
+	mPubsub.subscribe(json_filter, MY_OWN_CALLBACK);
 ```
 
 **Then, create the Handler. This will act as a message callback between the Service and your Activity.**
