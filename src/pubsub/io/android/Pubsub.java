@@ -552,7 +552,7 @@ public class Pubsub extends Service {
 				int starts = 1;
 				int ends = 0;
 
-				for (int i = 0; i < mStringBuffer.length(); i++) {
+				for (int i = start; i < mStringBuffer.length(); i++) {
 
 					if (mStringBuffer.charAt(i) == '{') {
 						starts++;
@@ -580,7 +580,7 @@ public class Pubsub extends Service {
 				int starts = 1;
 				int ends = 0;
 
-				for (int i = 0; i < mStringBuffer.length(); i++) {
+				for (int i = start+1; i < mStringBuffer.length(); i++) {
 
 					if (mStringBuffer.charAt(i) == '{') {
 						starts++;
