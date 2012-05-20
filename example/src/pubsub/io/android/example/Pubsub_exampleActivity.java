@@ -49,6 +49,7 @@ import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.ListView;
 import android.widget.TextView;
+import android.widget.Toast;
 
 /**
  * Example pubsub.io - Android client.
@@ -90,14 +91,18 @@ public class Pubsub_exampleActivity extends Activity implements
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.main);
 
+		timer = System.currentTimeMillis();
+
+		mPubsub = new Pubsub(this, mHandler);
+		mPubsub.connect("android");
+
 		// Sensors
 		mSensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
-		mAccelerometer = mSensorManager
-				.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
+		mAccelerometer = mSensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
 
 		mLocationManager = (LocationManager) getSystemService(LOCATION_SERVICE);
-		mLocationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER,
-				500, 5, this);
+		mLocationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 500,
+				5, this);
 
 		// UI
 		Button publish_message = (Button) findViewById(R.id.button1);
@@ -123,17 +128,15 @@ public class Pubsub_exampleActivity extends Activity implements
 
 		txtAccelerometer = (TextView) findViewById(R.id.textView2);
 		txtAccelerometer.setText((publishing_acc == true ? "ON" : "OFF"));
-		txtAccelerometer
-				.setBackgroundColor((publishing_acc == true ? Color.GREEN
-						: Color.RED));
+		txtAccelerometer.setBackgroundColor((publishing_acc == true ? Color.GREEN
+				: Color.RED));
 		Button publish_accelerometer = (Button) findViewById(R.id.button2);
 		publish_accelerometer.setOnClickListener(new OnClickListener() {
 
 			@Override
 			public void onClick(View v) {
 				publishing_acc = !publishing_acc;
-				txtAccelerometer
-						.setText((publishing_acc == true ? "ON" : "OFF"));
+				txtAccelerometer.setText((publishing_acc == true ? "ON" : "OFF"));
 				txtAccelerometer
 						.setBackgroundColor((publishing_acc == true ? Color.GREEN
 								: Color.RED));
@@ -142,8 +145,8 @@ public class Pubsub_exampleActivity extends Activity implements
 
 		txtGps = (TextView) findViewById(R.id.textView3);
 		txtGps.setText((publishing_gps == true ? "ON" : "OFF"));
-		txtGps.setBackgroundColor((publishing_gps == true ? Color.GREEN
-				: Color.RED));
+		txtGps
+				.setBackgroundColor((publishing_gps == true ? Color.GREEN : Color.RED));
 		Button publish_gps = (Button) findViewById(R.id.button3);
 		publish_gps.setOnClickListener(new OnClickListener() {
 
@@ -165,9 +168,6 @@ public class Pubsub_exampleActivity extends Activity implements
 
 	@Override
 	protected void onPause() {
-		// Disconnect from the service
-		unbindService(serviceConnection);
-
 		mSensorManager.unregisterListener(this);
 
 		super.onPause();
@@ -175,11 +175,7 @@ public class Pubsub_exampleActivity extends Activity implements
 
 	@Override
 	protected void onResume() {
-		// Connect to the service (DONT use startService unless that is your
-		// explicit intention for your app!)
-		Intent intent = new Intent(this, Pubsub.class);
-		// startService(intent); // This is not recommended.
-		bindService(intent, serviceConnection, Context.BIND_AUTO_CREATE);
+		// mPubsub.reconnect();
 
 		mSensorManager.registerListener(this, mAccelerometer,
 				SensorManager.SENSOR_DELAY_NORMAL);
@@ -187,63 +183,52 @@ public class Pubsub_exampleActivity extends Activity implements
 		super.onResume();
 	}
 
-	private ServiceConnection serviceConnection = new ServiceConnection() {
-
-		@Override
-		public void onServiceConnected(ComponentName className, IBinder service) {
-			Log.i(TAG, "onServiceConnected");
-
-			mPubsub = ((Pubsub.LocalBinder) service).getService();
-			mPubsub.setHandler(mHandler);
-			mPubsub.connect("android");
-
-			// Subscribe to something with a specific handler
-			JSONObject json_filter = new JSONObject();
-
-			try {
-				JSONObject version = new JSONObject();
-				version.put("$gt", 0.1);
-
-				json_filter.put("version", version);
-			} catch (JSONException e) {
-				e.printStackTrace();
-			}
-
-			mPubsub.subscribe(json_filter, VERSION_FILTER);
-		}
-
-		@Override
-		public void onServiceDisconnected(ComponentName className) {
-			Log.i(TAG, "onServiceDisconnected");
-
-			mPubsub.disconnect();
-			mPubsub.setHandler(null);
-			mPubsub = null;
-		}
-	};
-
 	private Handler mHandler = new Handler() {
 		@Override
 		public void handleMessage(Message msg) {
 			switch (msg.what) {
+
+			case Pubsub.CONNECTION_FAILED:
+				// Connection failed... what to do?
+				break;
+				
+			case Pubsub.CONNECTED_TO_HOST:
+				// When we're connected, print the host name in a Toast.
+				Toast.makeText(Pubsub_exampleActivity.this,
+						msg.getData().getString(Pubsub.HOST_NAME), Toast.LENGTH_SHORT)
+						.show();
+				break;
+
+			case Pubsub.CONNECTION_LOST:
+				// Connection lost, what to do?
+				mPubsub.reconnect();
+				break;
+
+			case Pubsub.SUBSCRIBES:
+				// Subscribe to all "version" messages with values greater than 0.1!
+				JSONObject json_filter = new JSONObject();
+				try {
+					JSONObject version = new JSONObject();
+					version.put("$gt", 0.1);
+
+					json_filter.put("version", version);
+				} catch (JSONException e) {
+					e.printStackTrace();
+				}
+				mPubsub.subscribe(json_filter, VERSION_FILTER);
+				break;
+
 			case Pubsub.RAW_TEXT:
 				// We can get the un-parsed message in here if we want...
 				byte[] readBuf = (byte[]) msg.obj;
 				String readMessage = new String(readBuf, 0, msg.arg1);
+				Log.i(TAG, readMessage);
 				break;
-			case Pubsub.TERMINATED:
-				// TODO react to connection failures?
-				break;
-			case Pubsub.ERROR:
-				// Fetch the error (a JSONObject) and do something with it!
-				// {"simple":"The basic message, "error":"The real error"}
-				JSONObject error = (JSONObject) msg.obj;
-				Log.i(TAG, error.toString());
-				break;
+
 			case VERSION_FILTER:
 				// Get the message (doc) from the server.
 				JSONObject doc = (JSONObject) msg.obj;
-				
+
 				try {
 					double version = doc.getDouble("version");
 					// Add the value to the ListView
@@ -252,8 +237,8 @@ public class Pubsub_exampleActivity extends Activity implements
 				} catch (JSONException e) {
 					e.printStackTrace();
 				}
-				
 				break;
+
 			}
 		}
 	};
@@ -265,7 +250,7 @@ public class Pubsub_exampleActivity extends Activity implements
 	@Override
 	public void onSensorChanged(SensorEvent event) {
 		// We're just making sure that
-		if (publishing_acc) {
+		if (publishing_acc && time_to_publish(200)) {
 			float[] vals = event.values;
 
 			JSONObject doc = new JSONObject();
@@ -285,7 +270,7 @@ public class Pubsub_exampleActivity extends Activity implements
 	@Override
 	public void onLocationChanged(Location location) {
 		// We're just making sure that
-		if (publishing_gps) {
+		if (publishing_gps && time_to_publish(200)) {
 			double lat = location.getLatitude();
 			double lon = location.getLongitude();
 
@@ -311,5 +296,25 @@ public class Pubsub_exampleActivity extends Activity implements
 
 	@Override
 	public void onStatusChanged(String provider, int status, Bundle extras) {
+	}
+
+	/** Contains the last known time for publish */
+	private long timer = 0;
+
+	/**
+	 * Determines if it's time to publish another value to the stream.
+	 * 
+	 * @param delay
+	 * @return
+	 */
+	private boolean time_to_publish(long delay) {
+		long currenttime = System.currentTimeMillis();
+
+		boolean timetopublish = (currenttime - timer > delay ? true : false);
+
+		if (timetopublish)
+			timer = currenttime;
+
+		return timetopublish;
 	}
 }

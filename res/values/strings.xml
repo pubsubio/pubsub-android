@@ -19,4 +19,5 @@
 -->
 <resources>
     <string name="RAW_TEXT">RAW_TEXT</string>
+    <string name="not_connected">PubSub.io is not connected yet!</string>
 </resources>
