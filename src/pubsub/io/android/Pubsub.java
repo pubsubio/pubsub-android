@@ -21,9 +21,11 @@ package pubsub.io.android;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import android.annotation.SuppressLint;
 import android.content.Context;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
+import android.os.AsyncTask;
 import android.os.Handler;
 import android.util.Log;
 import android.widget.Toast;
@@ -60,7 +62,7 @@ public class Pubsub {
 
 	/** Notification that the connection failed (was never connected) */
 	public static final int CONNECTION_FAILED = 16;
-	
+
 	/** Recieved when succesful connection was established to PubSub host */
 	public static final int CONNECTED_TO_HOST = 15;
 	public static final String HOST_NAME = "host";
@@ -88,7 +90,7 @@ public class Pubsub {
 	 * To debug or not debug, it is the question.
 	 * 
 	 * @param debug
-	 *          ...and this is the answer.
+	 *            ...and this is the answer.
 	 */
 	public void DEBUG(boolean debug) {
 		this.DEBUG = debug;
@@ -131,7 +133,8 @@ public class Pubsub {
 			Log.i(TAG, "connect(" + host + ", " + port + ", " + sub + ")");
 
 		if (!hasInternet()) {
-			Toast.makeText(mContext,
+			Toast.makeText(
+					mContext,
 					"Your device needs internet connection! Connection aborted!",
 					Toast.LENGTH_SHORT).show();
 			return;
@@ -173,17 +176,18 @@ public class Pubsub {
 	}
 
 	/**
-	 * Subscribe to a filter, with a specified handler_callback, on the connected
-	 * sub. The handler_callback should be a declared constant, and it should be
-	 * used in the Handler of your activity!
+	 * Subscribe to a filter, with a specified handler_callback, on the
+	 * connected sub. The handler_callback should be a declared constant, and it
+	 * should be used in the Handler of your activity!
 	 * 
 	 * @param json_filter
 	 * @param handler_callback
+	 * @throws JSONException
 	 */
-	public void subscribe(JSONObject json_filter, int handler_callback) {
+	public void subscribe(JSONObject json_filter, int handler_callback)
+			throws JSONException {
 		if (DEBUG)
 			Log.i(TAG, "Subscribe: " + json_filter.toString());
-
 
 		// Check that we're actually connected before trying anything
 		if (mPubsubComm.getState() != mPubsubComm.STATE_CONNECTED) {
@@ -192,21 +196,17 @@ public class Pubsub {
 			return;
 		}
 
-		try {
-			// Send the message to the hub
-			mPubsubComm.write(PubsubParser.subscribe(json_filter, handler_callback)
-					.getBytes());
-		} catch (JSONException e) {
-			Log.e(TAG, e.getMessage(), e);
-		}
+		new CommTask().execute(PubsubParser.subscribe(json_filter,
+				handler_callback).getBytes());
 	}
 
 	/**
 	 * Unsubscribe the specified handler_callback.
 	 * 
 	 * @param handler_callback
+	 * @throws JSONException
 	 */
-	public void unsubscribe(Integer handler_callback) {
+	public void unsubscribe(Integer handler_callback) throws JSONException {
 		if (DEBUG)
 			Log.i(TAG, "Unsubscribe: " + handler_callback);
 
@@ -217,20 +217,17 @@ public class Pubsub {
 			return;
 		}
 
-		try {
-			// Send the message to the hub
-			mPubsubComm.write(PubsubParser.unsubscribe(handler_callback).getBytes());
-		} catch (JSONException e) {
-			Log.e(TAG, e.getMessage(), e);
-		}
+		new CommTask().execute(PubsubParser.unsubscribe(handler_callback)
+				.getBytes());
 	}
 
 	/**
 	 * Publish a document to the connected sub.
 	 * 
 	 * @param doc
+	 * @throws JSONException
 	 */
-	public void publish(JSONObject doc) {
+	public void publish(JSONObject doc) throws JSONException {
 		if (DEBUG)
 			Log.i(TAG, "Publish: " + doc.toString());
 
@@ -241,11 +238,7 @@ public class Pubsub {
 			return;
 		}
 
-		try {
-			mPubsubComm.write(PubsubParser.publish(doc).getBytes());
-		} catch (JSONException e) {
-			Log.e(TAG, e.getMessage(), e);
-		}
+		new CommTask().execute(PubsubParser.publish(doc).getBytes());
 	}
 
 	/**
@@ -262,9 +255,9 @@ public class Pubsub {
 
 	/**
 	 * Set the callback handler for the service. This is the handler where all
-	 * callbacks from the hub will arrive, and also some library callbacks can be
-	 * read from the same handler. Library handlers include RAW_TEXT, TERMINATED,
-	 * and ERROR.
+	 * callbacks from the hub will arrive, and also some library callbacks can
+	 * be read from the same handler. Library handlers include RAW_TEXT,
+	 * TERMINATED, and ERROR.
 	 * 
 	 * @param handler
 	 */
@@ -279,8 +272,8 @@ public class Pubsub {
 	 * Basic write. For the love of god, don't use this!!! All hell will break
 	 * loose and tiny ants will eat your skin off when you sleep!
 	 * 
-	 * Nah, it's not that bad... chances are you'll do it wrong though so it won't
-	 * work.
+	 * Nah, it's not that bad... chances are you'll do it wrong though so it
+	 * won't work.
 	 * 
 	 * @param message
 	 */
@@ -337,6 +330,16 @@ public class Pubsub {
 			Log.i(TAG, "No Mobile detected, aborting");
 
 		return false;
+	}
+
+	@SuppressLint("NewApi")
+	private class CommTask extends AsyncTask<byte[], Void, Void> {
+
+		@Override
+		protected Void doInBackground(byte[]... params) {
+			mPubsubComm.write(params[0]);
+			return null;
+		}
 	}
 
 }

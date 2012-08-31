@@ -24,105 +24,61 @@
 
 ## Getting started with Pubsub.io for Android
 
-**First, create a ServiceConnection in your activity. This is required because pubsub-android is a Service, and also where we define what hub & sub to connect to.**
+** Create the Pubsub object, this will be your main interaction channel with the Pubsub service.**
 
 ``` java
-	private ServiceConnection serviceConnection = new ServiceConnection() {
-		@Override
-		public void onServiceConnected(ComponentName className, IBinder service) {
-			mPubsub = ((Pubsub.LocalBinder) service).getService();
-			mPubsub.setHandler(mHandler);
-			mPubsub.connect();
-		}
-
-		@Override
-		public void onServiceDisconnected(ComponentName className) {
-			mPubsub = null;
-			mPubsub.setHandler(null);
-		}
-	};
+	Pubsub mPubsub = new Pubsub( this, mHandler );
 ```
 
-**Now we can register callbacks that our app will react to, these are just plain integers (They should be unique!).**
-
-``` java
-	// Create your own callback id, random number. Make sure they don't have the same values as any of the Pubsub constants.
-	private int MY_OWN_CALLBACK = 6322;
-
-	// Use our new callback id to subscribe to specific events on the sub
-	JSONObject json_filter = new JSONObject();
-
-	// Our filter is currently looking for version numbers that are GREATER THAN 0.1!
-	try {
-		JSONObject version = new JSONObject();
-		version.put("$gt", 0.1);
-
-		json_filter.put("version", version);
-	} catch (JSONException e) {
-		e.printStackTrace();
-	}
-
-	mPubsub.subscribe(json_filter, MY_OWN_CALLBACK);
-```
-
-**Then, create the Handler. This will act as a message callback between the Service and your Activity.**
+** All events in Pubsub.io are recievied through a Handler interface, register a new Handler and call it "mHandler". **
 
 ``` java
 	private Handler mHandler = new Handler() {
 		@Override
 		public void handleMessage(Message msg) {
 			switch (msg.what) {
-			case Pubsub.RAW_TEXT:
-				byte[] readBuf = (byte[]) msg.obj;
-				String readMessage = new String(readBuf, 0, msg.arg1);
-				// TODO Do something with the message here...
+			case Pubsub.CONNECTED_TO_HOST:
+				// React when a connection attempt was successfull, for example:
+				// Subscribing or publishing
 				break;
-			case Pubsub.TERMINATED:
-				// TODO React when the connection fails...
+			case Pubsub.CONNECTION_FAILED:
+				// React when a connection attempt failed, for example:
+				// Issue another connection attempt in a few seconds.
 				break;
-			case Pubsub.ERROR:
-				// TODO Read error messages here...
-				break;
-			case MY_OWN_CALLBACK:
-				try {
-					double version = doc.getDouble("version");
-					Log.i(TAG, "Version message from Pubsub.io: " + version);
-				} catch (JSONException e) {
-					e.printStackTrace();
-				}
+			case Pubsub.CONNECTION_LOST:
+				// React when a connection was lost, for example:
+				// Inform the user and abort any pubsub-dependant tasks.
 				break;
 			}
 		}
 	};
 ```
 
-**To start the service, you'll use an intent in the "onResume()" activity method.**
-
+** Subscribing to a topic. **
 ``` java
-	@Override
-	protected void onResume() {
-		// Connect to the service
-		Intent intent = new Intent(this, Pubsub.class);
-		bindService(intent, serviceConnection, Context.BIND_AUTO_CREATE);
-
-		super.onResume();
+	private static final int MY_FILTER = 1;
+	
+	JSONObject filter = new JSONObject();
+	try {
+		filter.put("name", "value");
+		mPubsub.subscribe(filter, MY_FILTER);
+	} catch (JSONException e) {
+		e.printStackTrace();
 	}
 ```
 
-**And make sure to disconnect from the service in "onPause()" too! Note, this will NOT shut down your connection.**
-
+** Publishing to a topic. **
 ``` java
-	@Override
-	protected void onPause() {
-		// Disconnect from the service
-		unbindService(serviceConnection);
-
-		super.onPause();
+	JSONObject doc = new JSONObject();
+	try {
+		filter.put("name", "value");
+		mPubsub.publish(doc);
+	} catch (JSONException e) {
+		e.printStackTrace();
 	}
 ```
 
-## Also, you must make sure NOT to forget your AndroidManifest, it's imperative that you make the following changes!
+## Also, make sure to add the following <uses-permission> tags in your manifest file.
 
-* Add a <service> tag that points to the Pubsub service, otherwise you can't connect to it.
 * Add a <uses-permission> tag with the INTERNET rule.
 * Add a <user-permission> tag with the ACCESS_NETWORK_STATE rule.
